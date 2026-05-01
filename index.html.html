@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BNI — Simulador de Metas e Referências</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-bg: #ffffff;
+    --color-bg-secondary: #f5f5f3;
+    --color-bg-tertiary: #eeede8;
+    --color-text-primary: #1a1a18;
+    --color-text-secondary: #5f5e5a;
+    --color-text-tertiary: #888780;
+    --color-border: rgba(0,0,0,0.12);
+    --color-border-secondary: rgba(0,0,0,0.22);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --green: #1D9E75;
+    --green-light: #E1F5EE;
+    --green-dark: #085041;
+    --red-bni: #C41E3A;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-bg: #1c1c1a;
+      --color-bg-secondary: #262624;
+      --color-bg-tertiary: #2e2e2c;
+      --color-text-primary: #f0efea;
+      --color-text-secondary: #b4b2a9;
+      --color-text-tertiary: #888780;
+      --color-border: rgba(255,255,255,0.12);
+      --color-border-secondary: rgba(255,255,255,0.22);
+      --green-light: #04342C;
+      --green-dark: #9FE1CB;
+    }
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+  .page { max-width: 720px; margin: 0 auto; }
+  .header { margin-bottom: 2rem; }
+  .title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 0.3rem; }
+  .bni-badge { background: var(--red-bni); color: #fff; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: var(--radius-md); letter-spacing: 0.05em; }
+  h1 { font-size: 22px; font-weight: 500; color: var(--color-text-primary); }
+  .subtitle { font-size: 14px; color: var(--color-text-secondary); line-height: 1.5; }
+
+  .card { background: var(--color-bg); border: 0.5px solid var(--color-border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.25rem; }
+
+  .formula-strip { background: var(--color-bg-secondary); border: 0.5px solid var(--color-border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
+  .fbox { text-align: center; }
+  .fbox .flabel { font-size: 11px; color: var(--color-text-tertiary); margin-bottom: 3px; }
+  .fbox .fval { font-size: 20px; font-weight: 500; color: var(--color-text-primary); }
+  .fbox.highlight .fval { color: var(--red-bni); }
+  .fop { font-size: 22px; color: var(--color-text-tertiary); padding-bottom: 2px; }
+
+  .inputs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+  .input-card { background: var(--color-bg); border: 0.5px solid var(--color-border); border-radius: var(--radius-lg); padding: 1rem 1.1rem; }
+  .input-card label { font-size: 12px; color: var(--color-text-secondary); display: block; margin-bottom: 7px; }
+  .inp-row { display: flex; align-items: center; gap: 6px; }
+  .prefix { font-size: 14px; color: var(--color-text-secondary); }
+  .num-input { width: 100%; border: 0.5px solid var(--color-border-secondary); border-radius: var(--radius-md); padding: 7px 10px; font-size: 16px; font-weight: 500; color: var(--color-text-primary); background: var(--color-bg); }
+  .num-input:focus { outline: none; box-shadow: 0 0 0 2px rgba(29,158,117,0.3); border-color: var(--green); }
+  input[type=range] { width: 100%; margin: 8px 0 2px; accent-color: var(--green); cursor: pointer; }
+  .range-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--color-text-tertiary); }
+
+  .results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 1.25rem; }
+  .metric-card { background: var(--color-bg-secondary); border-radius: var(--radius-md); padding: 1rem; }
+  .metric-card .mlabel { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 5px; }
+  .metric-card .mval { font-size: 26px; font-weight: 500; color: var(--color-text-primary); line-height: 1; }
+  .metric-card .msub { font-size: 11px; color: var(--color-text-tertiary); margin-top: 3px; }
+  .metric-card.green { background: var(--green-light); }
+  .metric-card.green .mval { color: var(--green-dark); }
+  .metric-card.red { background: #FAECE7; }
+  .metric-card.red .mval { color: #993C1D; }
+  @media (prefers-color-scheme: dark) {
+    .metric-card.red { background: #4A1B0C; }
+    .metric-card.red .mval { color: #F0997B; }
+  }
+
+  .section-title { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); margin-bottom: 10px; }
+  .progress-track { background: var(--color-border); border-radius: 99px; height: 8px; overflow: hidden; margin-bottom: 6px; }
+  .progress-fill { height: 100%; border-radius: 99px; background: var(--green); transition: width 0.35s ease; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--color-text-secondary); }
+
+  .ref-list { display: flex; flex-direction: column; gap: 9px; }
+  .ref-item { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--color-text-primary); }
+  .ref-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-border-secondary); flex-shrink: 0; transition: background 0.3s; }
+  .ref-dot.ok { background: var(--green); }
+
+  .impact-box { border-left: 3px solid var(--red-bni); padding: 0.85rem 1rem; background: var(--color-bg-secondary); border-radius: 0 var(--radius-md) var(--radius-md) 0; margin-bottom: 1.25rem; }
+  .impact-box p { font-size: 13px; color: var(--color-text-secondary); line-height: 1.7; }
+  .impact-box strong { color: var(--color-text-primary); font-weight: 500; }
+
+  .footer { text-align: center; font-size: 12px; color: var(--color-text-tertiary); margin-top: 2rem; padding-bottom: 1rem; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="title-row">
+      <span class="bni-badge">BNI</span>
+      <h1>Simulador de Metas e Referências</h1>
+    </div>
+    <p class="subtitle">Insira seus dados e descubra quantas referências você precisa por semana para bater sua meta.</p>
+  </div>
+
+  <div class="formula-strip">
+    <div class="fbox highlight"><div class="flabel">Referências</div><div class="fval" id="fs-ref">50</div></div>
+    <div class="fop">=</div>
+    <div class="fbox"><div class="flabel">Meta (R$)</div><div class="fval" id="fs-meta">100.000</div></div>
+    <div class="fop">÷</div>
+    <div class="fbox"><div class="flabel">Ticket médio</div><div class="fval" id="fs-ticket">5.000</div></div>
+    <div class="fop">÷</div>
+    <div class="fbox"><div class="flabel">Conversão</div><div class="fval" id="fs-conv">40%</div></div>
+  </div>
+
+  <div class="inputs-grid">
+    <div class="input-card">
+      <label>Meta de faturamento anual</label>
+      <div class="inp-row"><span class="prefix">R$</span><input class="num-input" id="meta" type="number" min="1000" max="10000000" step="1000" value="100000"></div>
+      <input type="range" id="meta-range" min="10000" max="2000000" step="5000" value="100000">
+      <div class="range-row"><span>R$ 10k</span><span>R$ 2M</span></div>
+    </div>
+    <div class="input-card">
+      <label>Ticket médio por venda</label>
+      <div class="inp-row"><span class="prefix">R$</span><input class="num-input" id="ticket" type="number" min="100" max="500000" step="100" value="5000"></div>
+      <input type="range" id="ticket-range" min="100" max="100000" step="100" value="5000">
+      <div class="range-row"><span>R$ 100</span><span>R$ 100k</span></div>
+    </div>
+    <div class="input-card">
+      <label>Taxa de conversão de referências</label>
+      <div class="inp-row"><input class="num-input" id="conv" type="number" min="1" max="100" step="1" value="40"><span class="prefix">%</span></div>
+      <input type="range" id="conv-range" min="1" max="100" step="1" value="40">
+      <div class="range-row"><span>1%</span><span>100%</span></div>
+    </div>
+    <div class="input-card">
+      <label>Semanas no ano</label>
+      <div class="inp-row"><input class="num-input" id="semanas" type="number" min="1" max="52" step="1" value="50"></div>
+      <input type="range" id="semanas-range" min="30" max="52" step="1" value="50">
+      <div class="range-row"><span>30</span><span>52</span></div>
+    </div>
+  </div>
+
+  <div class="results-grid">
+    <div class="metric-card">
+      <div class="mlabel">Vendas necessárias</div>
+      <div class="mval" id="r-vendas">20</div>
+      <div class="msub">fechamentos/ano</div>
+    </div>
+    <div class="metric-card green">
+      <div class="mlabel">Referências necessárias</div>
+      <div class="mval" id="r-refs">50</div>
+      <div class="msub">no ano</div>
+    </div>
+    <div class="metric-card red">
+      <div class="mlabel">Meta semanal</div>
+      <div class="mval" id="r-semana">1,0</div>
+      <div class="msub">referências/semana</div>
+    </div>
+    <div class="metric-card">
+      <div class="mlabel">Receita por referência</div>
+      <div class="mval" id="r-rpref">R$ 2k</div>
+      <div class="msub">valor esperado</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Progresso semanal — ritmo necessário para atingir a meta</div>
+    <div class="progress-track"><div class="progress-fill" id="prog-fill" style="width:100%"></div></div>
+    <div class="progress-label">
+      <span id="prog-left">50 referências em 50 semanas</span>
+      <span id="prog-right">1,0 ref/semana</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Reflexão para o membro</div>
+    <div class="ref-list">
+      <div class="ref-item"><div class="ref-dot ok" id="dot1"></div><span id="q1">Minha meta está clara? → R$ 100.000/ano</span></div>
+      <div class="ref-item"><div class="ref-dot ok" id="dot2"></div><span id="q2">Meu ticket médio está definido? → R$ 5.000</span></div>
+      <div class="ref-item"><div class="ref-dot ok" id="dot3"></div><span id="q3">Eu sei minha taxa de conversão? → 40%</span></div>
+      <div class="ref-item"><div class="ref-dot" id="dot4"></div><span>O grupo sabe exatamente quem deve me indicar?</span></div>
+    </div>
+  </div>
+
+  <div class="impact-box">
+    <p><strong>Meta clara gera pedido claro.</strong> Pedido claro gera referência qualificada. Referência qualificada gera negócio fechado.</p>
+  </div>
+
+  <div class="footer">Simulador BNI — Mentoria de Metas e Referências</div>
+</div>
+
+<script>
+  const fmt = n => Math.round(n).toLocaleString('pt-BR');
+  const fmtMoney = n => {
+    if (n >= 1000000) return 'R$ ' + (n/1000000).toFixed(1).replace('.',',') + 'M';
+    if (n >= 1000) return 'R$ ' + Math.round(n/1000) + 'k';
+    return 'R$ ' + Math.round(n);
+  };
+
+  function calc() {
+    const meta = parseFloat(document.getElementById('meta').value) || 0;
+    const ticket = parseFloat(document.getElementById('ticket').value) || 1;
+    const conv = parseFloat(document.getElementById('conv').value) || 1;
+    const semanas = parseFloat(document.getElementById('semanas').value) || 50;
+
+    const vendas = meta / ticket;
+    const refs = vendas / (conv / 100);
+    const refSemana = refs / semanas;
+    const receitaRef = refs > 0 ? meta / refs : 0;
+
+    document.getElementById('fs-meta').textContent = fmt(meta);
+    document.getElementById('fs-ticket').textContent = fmt(ticket);
+    document.getElementById('fs-conv').textContent = Math.round(conv) + '%';
+    document.getElementById('fs-ref').textContent = Math.ceil(refs);
+
+    document.getElementById('r-vendas').textContent = Math.ceil(vendas);
+    document.getElementById('r-refs').textContent = Math.ceil(refs);
+    document.getElementById('r-semana').textContent = refSemana.toFixed(1).replace('.',',');
+    document.getElementById('r-rpref').textContent = fmtMoney(receitaRef);
+
+    const pct = Math.min(100, Math.max(4, (1 / Math.max(refSemana, 0.01)) * 100));
+    document.getElementById('prog-fill').style.width = pct + '%';
+    document.getElementById('prog-left').textContent = Math.ceil(refs) + ' referências em ' + Math.round(semanas) + ' semanas';
+    document.getElementById('prog-right').textContent = refSemana.toFixed(1).replace('.',',') + ' ref/semana';
+
+    document.getElementById('q1').textContent = 'Minha meta está clara? → R$ ' + fmt(meta) + '/ano';
+    document.getElementById('q2').textContent = 'Meu ticket médio está definido? → R$ ' + fmt(ticket);
+    document.getElementById('q3').textContent = 'Eu sei minha taxa de conversão? → ' + Math.round(conv) + '%';
+
+    ['dot1','dot2','dot3'].forEach(id => document.getElementById(id).classList.add('ok'));
+  }
+
+  function sync(numId, rangeId) {
+    const num = document.getElementById(numId);
+    const range = document.getElementById(rangeId);
+    num.addEventListener('input', () => { range.value = num.value; calc(); });
+    range.addEventListener('input', () => { num.value = range.value; calc(); });
+  }
+
+  sync('meta', 'meta-range');
+  sync('ticket', 'ticket-range');
+  sync('conv', 'conv-range');
+  sync('semanas', 'semanas-range');
+
+  calc();
+</script>
+</body>
+</html>
